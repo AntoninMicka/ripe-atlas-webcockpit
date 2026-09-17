@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="dark">
+    <meta name="description" content="A read-only RIPE Atlas status cockpit for Turris Omnia.">
+    <title>RIPE Atlas Webcockpit</title>
+    <link rel="stylesheet" href="./styles.css">
+    <script type="module" src="./app.js"></script>
+  </head>
+  <body>
+    <div class="ambient ambient-one"></div>
+    <div class="ambient ambient-two"></div>
+    <header class="topbar">
+      <a class="brand" href="./" aria-label="RIPE Atlas Webcockpit home">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span><strong>RIPE Atlas</strong><small>Webcockpit · Turris Omnia</small></span>
+      </a>
+      <div class="read-only"><span></span> Read-only mode</div>
+    </header>
+
+    <main>
+      <section class="hero" aria-labelledby="page-title">
+        <div>
+          <p class="eyebrow">NETWORK OBSERVATORY</p>
+          <h1 id="page-title">Your probe,<br><em>at a glance.</em></h1>
+          <p class="intro">A calm operational view of the public RIPE Atlas state reported for your router.</p>
+        </div>
+        <form id="probe-form" class="lookup">
+          <label for="probe-id">Public probe ID</label>
+          <div class="lookup-row">
+            <span class="hash" aria-hidden="true">#</span>
+            <input id="probe-id" name="probe-id" inputmode="numeric" autocomplete="off" placeholder="e.g. 12345" required pattern="[1-9][0-9]{0,9}">
+            <button type="submit">Load probe <span aria-hidden="true">→</span></button>
+          </div>
+          <p id="form-help">Only public metadata is requested. No API key is needed.</p>
+        </form>
+      </section>
+
+      <section id="welcome" class="welcome panel">
+        <div class="radar" aria-hidden="true"><span></span><span></span><span></span><b></b></div>
+        <div>
+          <p class="kicker">READY TO OBSERVE</p>
+          <h2>Connect the cockpit to a probe.</h2>
+          <p>Find your probe ID in the RIPE Atlas portal, enter it above, and this page will build a live status summary.</p>
+        </div>
+      </section>
+
+      <section id="message" class="message panel" hidden aria-live="polite"></section>
+
+      <section id="dashboard" class="dashboard" hidden aria-live="polite">
+        <article class="panel identity-card">
+          <div class="card-head">
+            <div><p class="kicker">PROBE IDENTITY</p><h2>Probe <span id="probe-heading"></span></h2></div>
+            <div id="status-pill" class="status-pill"><span></span><b></b></div>
+          </div>
+          <p id="probe-description" class="description"></p>
+          <dl class="identity-grid">
+            <div><dt>Country</dt><dd id="country"></dd></div>
+            <div><dt>Firmware</dt><dd id="firmware"></dd></div>
+            <div><dt>Total uptime</dt><dd id="uptime"></dd></div>
+            <div><dt>Last connected</dt><dd id="last-connected"></dd></div>
+          </dl>
+        </article>
+
+        <article class="panel network-card">
+          <div class="card-head"><div><p class="kicker">NETWORK IDENTITY</p><h2>Address families</h2></div><span class="network-glyph">⌁</span></div>
+          <div class="address-family">
+            <div class="family-label"><span>4</span><strong>IPv4</strong></div>
+            <dl><div><dt>Address</dt><dd id="v4-address"></dd></div><div><dt>Prefix</dt><dd id="v4-prefix"></dd></div><div><dt>Origin</dt><dd id="v4-asn"></dd></div></dl>
+          </div>
+          <div class="address-family">
+            <div class="family-label ipv6"><span>6</span><strong>IPv6</strong></div>
+            <dl><div><dt>Address</dt><dd id="v6-address"></dd></div><div><dt>Prefix</dt><dd id="v6-prefix"></dd></div><div><dt>Origin</dt><dd id="v6-asn"></dd></div></dl>
+          </div>
+        </article>
+
+        <article class="panel tags-card">
+          <div class="card-head"><div><p class="kicker">CAPABILITIES</p><h2>Probe tags</h2></div><span id="tag-count" class="count"></span></div>
+          <div id="tags" class="tags"></div>
+        </article>
+
+        <article class="panel source-card">
+          <p class="kicker">SOURCE & FRESHNESS</p>
+          <h2>Public RIPE Atlas API</h2>
+          <p>Fetched directly from API v2 at <time id="observed-at"></time>. Router-local service state is not part of this milestone.</p>
+          <a id="atlas-link" href="https://atlas.ripe.net/probes/" target="_blank" rel="noreferrer">Open in RIPE Atlas <span>↗</span></a>
+        </article>
+      </section>
+    </main>
+
+    <footer><span>Independent project · No secrets stored</span><span>Public API data may be delayed</span></footer>
+  </body>
+</html>
