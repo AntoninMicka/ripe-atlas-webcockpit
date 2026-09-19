@@ -41,18 +41,25 @@ done
 
 local_tmp="$(mktemp -d /tmp/ripe-atlas-deploy.XXXXXX)"
 remote_tmp=""
+control_socket="$local_tmp/ssh-control"
+master_started=false
 cleanup() {
-  rm -rf "$local_tmp"
-  if [[ "$remote_tmp" =~ ^/tmp/ripe-atlas-deploy\.[A-Za-z0-9]+$ ]]; then
-    ssh "$target" "rm -rf '$remote_tmp'" >/dev/null 2>&1 || true
+  if [[ "$master_started" == true && "$remote_tmp" =~ ^/tmp/ripe-atlas-deploy\.[A-Za-z0-9]+$ ]]; then
+    ssh -o ControlPath="$control_socket" "$target" "rm -rf '$remote_tmp'" >/dev/null 2>&1 || true
   fi
+  if [[ "$master_started" == true ]]; then
+    ssh -o ControlPath="$control_socket" -O exit "$target" >/dev/null 2>&1 || true
+  fi
+  rm -rf "$local_tmp"
 }
 trap cleanup EXIT HUP INT TERM
 
 tar -C "$repo_dir" -czf "$local_tmp/bundle.tgz" \
   src openwrt README.md docs package.json
-remote_tmp="$(ssh "$target" 'mktemp -d /tmp/ripe-atlas-deploy.XXXXXX')"
+ssh -o ControlMaster=yes -o ControlPersist=60 -o ControlPath="$control_socket" -fN "$target"
+master_started=true
+remote_tmp="$(ssh -o ControlPath="$control_socket" "$target" 'mktemp -d /tmp/ripe-atlas-deploy.XXXXXX')"
 [[ "$remote_tmp" =~ ^/tmp/ripe-atlas-deploy\.[A-Za-z0-9]+$ ]] || { echo "Router returned an unsafe temporary path." >&2; exit 1; }
-scp "$local_tmp/bundle.tgz" "$target:$remote_tmp/bundle.tgz"
-ssh "$target" "mkdir '$remote_tmp/source' && tar -xzf '$remote_tmp/bundle.tgz' -C '$remote_tmp/source' && sh '$remote_tmp/source/openwrt/install.sh' --source='$remote_tmp/source'"
+scp -o ControlPath="$control_socket" "$local_tmp/bundle.tgz" "$target:$remote_tmp/bundle.tgz"
+ssh -o ControlPath="$control_socket" "$target" "mkdir '$remote_tmp/source' && tar -xzf '$remote_tmp/bundle.tgz' -C '$remote_tmp/source' && sh '$remote_tmp/source/openwrt/install.sh' --source='$remote_tmp/source'"
 echo "Deployment completed. Open https://ROUTER/ and select the RIPE Atlas Webcockpit tile."

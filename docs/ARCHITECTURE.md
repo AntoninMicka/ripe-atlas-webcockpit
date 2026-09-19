@@ -30,6 +30,8 @@ External data is rendered as text, never inserted as HTML. Browser validation is
 
 The integration uses the established Turris WebApps landing-page definition and existing lighttpd instance. It does not open a new port. The current implementation relies on a trusted-LAN boundary plus same-origin/CSRF checks. A WebApps tile is navigation, not authentication; stable reForis authentication integration remains future hardening.
 
+Turris already maps `/cgi-bin/` before application-specific aliases. The endpoint is therefore installed as `/www/cgi-bin/ripe-atlas-webcockpit`; the project lighttpd include must not add a competing `/cgi-bin/ripe-atlas-webcockpit` alias.
+
 ## Control-plane limits
 
 - one-off `ping` and `traceroute` only

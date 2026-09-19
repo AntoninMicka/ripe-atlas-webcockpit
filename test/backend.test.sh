@@ -35,4 +35,6 @@ node -e 'const p=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));
 
 cross_site="$(printf '%s' '{"action":"status"}' | env REQUEST_METHOD=POST CONTENT_TYPE=application/json CONTENT_LENGTH=19 HTTP_X_REQUESTED_WITH=ripe-atlas-webcockpit HTTP_SEC_FETCH_SITE=cross-site sh "$repo_dir/openwrt/atlas-cgi.sh")"
 [[ "$cross_site" == *'403 Forbidden'* ]]
+! grep -Eq '"/cgi-bin/ripe-atlas-webcockpit"[[:space:]]*=>' "$repo_dir/openwrt/90-ripe-atlas-webcockpit.conf"
+grep -Fq 'CGI_PATH="$CGI_DIR/ripe-atlas-webcockpit"' "$repo_dir/openwrt/install.sh"
 printf 'backend CGI contract: ok\n'

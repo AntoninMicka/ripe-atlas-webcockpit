@@ -4,7 +4,7 @@ The integration uses the existing Turris lighttpd service and WebApps landing pa
 
 - `/usr/share/ripe-atlas-webcockpit/releases/<timestamp>/` — immutable static release
 - `/www/ripe-atlas` — symlink to the current release
-- `/usr/libexec/ripe-atlas-webcockpit/api` — allowlisted CGI
+- `/www/cgi-bin/ripe-atlas-webcockpit` — allowlisted CGI under Turris' existing `/cgi-bin/` mapping
 - `/etc/ripe-atlas-webcockpit/access-token` — persistent mode-`0600` secret
 - `/etc/lighttpd/conf.d/90-ripe-atlas-webcockpit.conf` — alias, CGI and security headers
 - `/etc/turris-webapps/80-ripe-atlas-webcockpit.json` — landing-page tile

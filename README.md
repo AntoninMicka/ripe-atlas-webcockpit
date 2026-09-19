@@ -51,6 +51,8 @@ scripts/deploy-update.sh --target root@192.168.1.1 --yes
 
 The script installs immutable release assets, a WebApps tile, one lighttpd include and a CGI endpoint. It opens no new port and preserves `/etc/ripe-atlas-webcockpit/access-token` across updates. Each run creates a timestamped backup below `/root/ripe-atlas-webcockpit-backups/`.
 
+The deploy script reuses one temporary SSH control connection, so password-based router access normally prompts only once per run.
+
 Do not treat static checks as proof of compatibility with a Turris Omnia. The tile, HTTPS route, CGI, restart, repeated update, real low-cost measurement and recovery must be verified on the target Turris OS release.
 
 ## Data and security
