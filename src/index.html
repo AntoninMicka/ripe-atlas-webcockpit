@@ -129,6 +129,14 @@
             <div id="measurement-result" class="control-result" hidden aria-live="polite"></div>
           </article>
         </div>
+        <article class="panel existing-card">
+          <div class="existing-head">
+            <div><p class="kicker">MY MEASUREMENTS</p><h3>Existing Atlas measurements</h3></div>
+            <button id="refresh-measurements" class="secondary" type="button">Load measurements</button>
+          </div>
+          <p class="control-copy">Loads the 20 newest measurements visible to the configured key. Supported ping and traceroute entries can be loaded into the form or run again as a new bounded one-off measurement.</p>
+          <div id="measurements-list" class="measurements-list" aria-live="polite"><p class="empty">Save a key, then load your measurements.</p></div>
+        </article>
       </section>
     </main>
 

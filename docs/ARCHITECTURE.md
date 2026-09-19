@@ -13,7 +13,7 @@ Browser on trusted LAN
                                                        `--> RIPE Atlas API v2
 ```
 
-There is no database, analytics service or additional listener. The CGI accepts only token status/save/removal and bounded one-off ping/traceroute creation. It constructs the upstream request itself instead of forwarding arbitrary JSON.
+There is no database, analytics service or additional listener. The CGI accepts only token status/save/removal, an authenticated list of the key owner's newest measurements, and bounded one-off ping/traceroute creation. It constructs upstream requests itself instead of forwarding arbitrary JSON.
 
 ## Modules
 
@@ -21,7 +21,7 @@ There is no database, analytics service or additional listener. The CGI accepts 
 - `src/model.js` maps external public-probe data to a small display model.
 - `src/app.js` owns browser state and rendering.
 - `openwrt/atlas-cgi.sh` owns token storage, server-side validation and authenticated Atlas requests.
-- `openwrt/install.sh` installs a versioned release and restores owned files if lighttpd validation or restart fails.
+- `openwrt/install.sh` installs a versioned release and restores owned files if lighttpd validation, restart or the HTTPS CGI healthcheck fails.
 - `scripts/deploy-update.sh` provides explicit dry-run and apply paths over SSH.
 
 External data is rendered as text, never inserted as HTML. Browser validation is convenience only; the CGI independently validates every field.
@@ -38,5 +38,7 @@ Turris already maps `/cgi-bin/` before application-specific aliases. The endpoin
 - IPv4 or IPv6
 - at most 50 requested probes
 - region, country, ASN, prefix, explicit-probe or previous-measurement selection
+- reruns create a new one-off object and cap the reused previous-measurement probe set at 50
+- only measurements returned by the configured key's `/measurements/my/` endpoint may be rerun
 - no arbitrary API proxy, recurring measurements or stop operation
 - no installation or management of the RIPE Atlas software probe

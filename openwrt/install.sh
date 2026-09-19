@@ -13,7 +13,7 @@ done
 [ "$(id -u)" -eq 0 ] || { printf 'This installer must run as root on the router.\n' >&2; exit 1; }
 [ -d "$SOURCE_DIR/src" ] && [ -f "$SOURCE_DIR/openwrt/atlas-cgi.sh" ] || { printf 'Incomplete deployment bundle.\n' >&2; exit 1; }
 
-for command_name in lighttpd curl tar; do
+for command_name in lighttpd curl jsonfilter tar; do
   command -v "$command_name" >/dev/null 2>&1 || { printf 'Missing required router command: %s\n' "$command_name" >&2; exit 1; }
 done
 [ -r /usr/share/libubox/jshn.sh ] || { printf 'Missing /usr/share/libubox/jshn.sh (install libubox/jshn).\n' >&2; exit 1; }
@@ -104,9 +104,29 @@ ln -sfn "$CURRENT_LINK" "$WEB_LINK"
 
 lighttpd -tt -f /etc/lighttpd/lighttpd.conf
 /etc/init.d/lighttpd restart
+
+health_ok=false
+health_url=https://127.0.0.1/cgi-bin/ripe-atlas-webcockpit
+health_body="$backup/cgi-health.json"
+for attempt in 1 2 3 4 5; do
+  if curl -k --silent --show-error --fail \
+    --header 'Content-Type: application/json' \
+    --header 'X-Requested-With: ripe-atlas-webcockpit' \
+    --header 'Origin: https://127.0.0.1' \
+    --header 'Sec-Fetch-Site: same-origin' \
+    --data '{"action":"status"}' \
+    --output "$health_body" \
+    "$health_url" && grep -q '"tokenConfigured":' "$health_body"; then
+    health_ok=true
+    break
+  fi
+  sleep 1
+done
+[ "$health_ok" = true ] || { printf 'CGI healthcheck failed through lighttpd: %s\n' "$health_url" >&2; exit 1; }
 trap - EXIT HUP INT TERM
 
 printf 'RIPE Atlas Webcockpit installed.\n'
 printf 'URL: /ripe-atlas/\n'
 printf 'Backup: %s\n' "$backup"
 printf 'Token state was preserved at %s.\n' "$STATE"
+printf 'CGI healthcheck: passed\n'

@@ -11,6 +11,8 @@ Public probe status is fetched directly by the browser. On Turris, a deliberatel
 - Router-local API-key storage with mode `0600`; the key is never returned
 - One-off ping and traceroute creation from at most 50 probes
 - Probe selection by region, countries, ASN, prefix, IDs or previous measurement
+- Authenticated list of the 20 newest measurements owned by the configured key
+- Safe rerun as a new one-off measurement using the same target, address family and prior probe set
 - Turris WebApps landing-page tile and existing-lighttpd integration
 - Guarded deploy/update script with dry-run and pre-update backup
 - Zero browser runtime dependencies and unit-tested data/request validation
@@ -57,6 +59,6 @@ Do not treat static checks as proof of compatibility with a Turris Omnia. The ti
 
 ## Data and security
 
-The browser stores only the last entered probe ID. The API key is stored outside the web root in a mode-`0600` file owned by the lighttpd service account and is passed to RIPE Atlas through a temporary mode-private request directory. Use a dedicated RIPE Atlas key with only measurement-creation permission. See [docs/SECURITY.md](docs/SECURITY.md).
+The browser stores only the last entered probe ID. The API key is stored outside the web root in a mode-`0600` file owned by the lighttpd service account and is passed to RIPE Atlas through a temporary mode-private request directory. Existing measurements are requested through the authenticated `/measurements/my/` endpoint. Use a dedicated RIPE Atlas key with measurement-view and measurement-creation permission. See [docs/SECURITY.md](docs/SECURITY.md).
 
 The product name is **RIPE Atlas Webcockpit**. “RIPE Atlas” is a RIPE NCC service name; this independent project is not presented as an official RIPE NCC or CZ.NIC product.

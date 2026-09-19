@@ -91,6 +91,15 @@ export function createMeasurement(input, options = {}) {
   return controlRequest("measurement.create", normalizeMeasurement(input), options);
 }
 
+export function listMeasurements(options = {}) {
+  return controlRequest("measurements.list", {}, options);
+}
+
+export function rerunMeasurement(measurementId, options = {}) {
+  const normalized = parseProbeId(measurementId);
+  return controlRequest("measurement.rerun", { measurementId: normalized }, options);
+}
+
 export function parseProbeId(value) {
   const text = String(value ?? "").trim();
   if (!/^[1-9]\d{0,9}$/.test(text)) {

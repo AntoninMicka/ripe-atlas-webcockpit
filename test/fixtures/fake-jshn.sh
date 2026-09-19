@@ -1,4 +1,8 @@
 # Minimal jshn-compatible fixture for exercising the CGI contract on a non-OpenWrt host.
+# This intentionally reads an unset optional variable. OpenWrt shell libraries are
+# not guaranteed to be nounset-safe, and the production CGI must tolerate that.
+if [ -z "$JSHN_OPTIONAL_STATE" ]; then JSHN_OPTIONAL_STATE=""; fi
+
 json_load_file() {
   JSHN_INPUT="$1"
   export JSHN_INPUT

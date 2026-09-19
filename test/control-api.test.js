@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { AtlasApiError, createMeasurement, normalizeMeasurement, saveAccessToken } from "../src/api.js";
+import { AtlasApiError, createMeasurement, listMeasurements, normalizeMeasurement, rerunMeasurement, saveAccessToken } from "../src/api.js";
 
 const valid = {
   type: "ping", target: "example.net", description: "Router test", af: "4",
@@ -42,4 +42,23 @@ test("createMeasurement does not accept raw extra API fields", async () => {
   assert.equal(body.is_oneoff, undefined);
   assert.equal(body.bill_to, undefined);
   assert.equal(body.action, "measurement.create");
+});
+
+test("listMeasurements requests only the router-owned list action", async () => {
+  let body;
+  await listMeasurements({ fetchImpl: async (_url, init) => {
+    body = JSON.parse(init.body);
+    return { ok: true, status: 200, json: async () => ({ results: [] }) };
+  } });
+  assert.deepEqual(body, { action: "measurements.list" });
+});
+
+test("rerunMeasurement validates the ID before requesting a rerun", async () => {
+  let body;
+  await rerunMeasurement("424200", { fetchImpl: async (_url, init) => {
+    body = JSON.parse(init.body);
+    return { ok: true, status: 201, json: async () => ({ measurements: [424242] }) };
+  } });
+  assert.deepEqual(body, { action: "measurement.rerun", measurementId: 424200 });
+  assert.throws(() => rerunMeasurement("../../keys", { fetchImpl: async () => assert.fail("must not fetch") }), AtlasApiError);
 });

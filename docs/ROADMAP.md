@@ -28,6 +28,8 @@
 
 - one-off ping and traceroute
 - selection by region, countries, ASN, prefix, probe IDs or previous measurement
+- load the 20 newest measurements owned by the configured key
+- load a supported measurement into the editor or rerun it as a new bounded one-off
 - at most 50 probes per request
 - least-privilege router-local API key
 - verify one real low-cost measurement and result link on a test account
