@@ -59,7 +59,7 @@ case "$action" in
     [ ! -e "$TOKEN_FILE" ] || rm -f "$TOKEN_FILE" || respond "500 Internal Server Error" '{"error":"Could not remove the API key.","code":"token_storage"}'
     respond "200 OK" '{"tokenConfigured":false}'
     ;;
-  measurement.create|measurements.list|measurement.rerun) ;;
+  measurement.create|measurements.list|measurement.results|measurement.rerun|probes.list) ;;
   *) bad_request "Unknown action." ;;
 esac
 
@@ -73,7 +73,7 @@ atlas_request() {
   request_payload="${3:-}"
   umask 077
   {
-    printf '%s\n' 'silent' 'show-error' 'connect-timeout = 10' 'max-time = 30'
+    printf '%s\n' 'silent' 'show-error' 'connect-timeout = 10' 'max-time = 30' 'max-filesize = 1048576'
     printf 'url = "%s"\n' "$request_url"
     printf 'request = "%s"\n' "$request_method"
     printf '%s\n' 'header = "Accept: application/json"'
@@ -102,6 +102,32 @@ upstream_error() {
 if [ "$action" = "measurements.list" ]; then
   list_url="$ATLAS_API_BASE/measurements/my/?page_size=20&sort=-id&fields=id,type,target,description,status,is_oneoff,af,start_time,stop_time,probes_requested"
   atlas_request GET "$list_url"
+  case "$http_code" in 2??) ;; *) upstream_error ;; esac
+  printf 'Status: 200 OK\r\nContent-Type: application/json\r\nCache-Control: no-store\r\nX-Content-Type-Options: nosniff\r\n\r\n'
+  cat "$response_file"
+  exit 0
+fi
+
+if [ "$action" = "probes.list" ]; then
+  probes_url="$ATLAS_API_BASE/probes/my/?page_size=100&fields=id,status,country_code,description,is_public,is_anchor,address_v4,address_v6,asn_v4,asn_v6,last_connected"
+  atlas_request GET "$probes_url"
+  case "$http_code" in 2??) ;; *) upstream_error ;; esac
+  printf 'Status: 200 OK\r\nContent-Type: application/json\r\nCache-Control: no-store\r\nX-Content-Type-Options: nosniff\r\n\r\n'
+  cat "$response_file"
+  exit 0
+fi
+
+if [ "$action" = "measurement.results" ]; then
+  command -v jsonfilter >/dev/null 2>&1 || respond "503 Service Unavailable" '{"error":"jsonfilter is required to load results.","code":"missing_jsonfilter"}'
+  json_get_var measurement_id measurementId
+  case "$measurement_id" in ''|0|*[!0-9]*) bad_request "Invalid measurement ID." ;; esac
+  owner_url="$ATLAS_API_BASE/measurements/my/?id=$measurement_id&page_size=1&fields=id"
+  atlas_request GET "$owner_url"
+  case "$http_code" in 2??) ;; *) upstream_error ;; esac
+  returned_id="$(jsonfilter -i "$response_file" -e '@.results[0].id')"
+  [ "$returned_id" = "$measurement_id" ] || respond "404 Not Found" '{"error":"The measurement was not found for this key.","code":"measurement_not_found"}'
+  latest_url="$ATLAS_API_BASE/measurements/$measurement_id/latest/?versions=1"
+  atlas_request GET "$latest_url"
   case "$http_code" in 2??) ;; *) upstream_error ;; esac
   printf 'Status: 200 OK\r\nContent-Type: application/json\r\nCache-Control: no-store\r\nX-Content-Type-Options: nosniff\r\n\r\n'
   cat "$response_file"

@@ -1,4 +1,4 @@
-import { AtlasApiError, clearAccessToken, createMeasurement, fetchControlStatus, fetchProbe, listMeasurements, rerunMeasurement, saveAccessToken } from "./api.js";
+import { AtlasApiError, clearAccessToken, createMeasurement, fetchControlStatus, fetchMeasurementResults, fetchProbe, listMeasurements, listMyProbes, rerunMeasurement, saveAccessToken } from "./api.js";
 import { normalizeProbe } from "./model.js";
 
 const $ = (selector) => document.querySelector(selector);
@@ -104,6 +104,7 @@ function setControlStatus(configured, detail) {
   $("#token-status").textContent = detail;
   measurementForm.querySelector("button[type=submit]").disabled = !configured;
   $("#refresh-measurements").disabled = !configured;
+  $("#refresh-probes").disabled = !configured;
 }
 
 async function refreshControlStatus() {
@@ -112,7 +113,10 @@ async function refreshControlStatus() {
     setControlStatus(status.tokenConfigured, status.tokenConfigured
       ? "A measurement key is configured. Its value cannot be read back."
       : "No measurement key is configured yet.");
-    if (status.tokenConfigured) loadOwnedMeasurements();
+    if (status.tokenConfigured) {
+      loadOwnedMeasurements();
+      loadOwnedProbes();
+    }
   } catch {
     setControlStatus(false, "Router control is unavailable in this deployment. Public probe lookup still works.");
     tokenForm.querySelector("button[type=submit]").disabled = true;
@@ -129,6 +133,7 @@ tokenForm.addEventListener("submit", async (event) => {
     tokenForm.reset();
     setControlStatus(true, "Measurement key saved securely on this router.");
     loadOwnedMeasurements();
+    loadOwnedProbes();
   } catch (error) {
     $("#token-status").textContent = error instanceof AtlasApiError ? error.message : "Could not save the key.";
   } finally { button.disabled = false; }
@@ -142,6 +147,7 @@ $("#clear-token").addEventListener("click", async () => {
     await clearAccessToken();
     setControlStatus(false, "Measurement key removed from this router.");
     renderMeasurements([]);
+    renderProbes([]);
   } catch (error) {
     $("#token-status").textContent = error instanceof AtlasApiError ? error.message : "Could not remove the key.";
   } finally { button.disabled = false; }
@@ -225,7 +231,11 @@ function renderMeasurements(measurements) {
     runButton.textContent = "Run again";
     runButton.disabled = !supported;
     runButton.addEventListener("click", () => runExistingMeasurement(measurement, runButton));
-    actions.append(loadButton, runButton);
+    const resultsButton = document.createElement("button");
+    resultsButton.type = "button";
+    resultsButton.textContent = "Results";
+    resultsButton.addEventListener("click", () => loadLatestResults(measurement, resultsButton));
+    actions.append(resultsButton, loadButton, runButton);
     row.append(main, actions);
     container.append(row);
   }
@@ -283,6 +293,111 @@ async function runExistingMeasurement(measurement, button) {
 }
 
 $("#refresh-measurements").addEventListener("click", loadOwnedMeasurements);
+
+function formatResultTime(timestamp) {
+  if (!Number.isFinite(Number(timestamp))) return "Time not reported";
+  return new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short" }).format(new Date(Number(timestamp) * 1000));
+}
+
+function summarizeResult(result) {
+  if (result?.error) return String(result.error);
+  if (Number.isFinite(Number(result?.avg))) {
+    const delivery = Number.isFinite(Number(result?.rcvd)) && Number.isFinite(Number(result?.sent))
+      ? ` · ${result.rcvd}/${result.sent} replies` : "";
+    return `${Number(result.avg).toFixed(2)} ms average${delivery}`;
+  }
+  if (Array.isArray(result?.result)) {
+    const hops = result.result.length;
+    const reached = result.destination_ip_responded === true ? "destination reached" : "destination not confirmed";
+    return `${hops} hops · ${reached}`;
+  }
+  return "Result available; open RIPE Atlas for the full type-specific detail.";
+}
+
+async function loadLatestResults(measurement, button) {
+  button.disabled = true;
+  const card = $("#results-card");
+  const container = $("#measurement-results");
+  card.hidden = false;
+  $("#results-title").textContent = `Latest results · #${measurement.id}`;
+  $("#results-atlas-link").href = `https://atlas.ripe.net/measurements/${measurement.id}/#results`;
+  container.textContent = "Loading latest results…";
+  try {
+    const response = await fetchMeasurementResults(measurement.id);
+    const entries = Object.entries(response).slice(0, 50);
+    container.replaceChildren();
+    if (!entries.length) {
+      container.textContent = "No latest results are available yet.";
+    } else {
+      for (const [probeId, versions] of entries) {
+        const result = Array.isArray(versions) ? versions[0] : null;
+        const item = document.createElement("div");
+        item.className = "result-item";
+        const title = document.createElement("strong");
+        title.textContent = `Probe #${result?.prb_id ?? probeId}`;
+        const summary = document.createElement("span");
+        summary.textContent = summarizeResult(result);
+        const observed = document.createElement("span");
+        observed.textContent = formatResultTime(result?.timestamp ?? result?.endtime);
+        item.append(title, summary, observed);
+        container.append(item);
+      }
+    }
+    card.scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch (error) {
+    container.textContent = error instanceof AtlasApiError ? error.message : "Could not load measurement results.";
+  } finally { button.disabled = false; }
+}
+
+function renderProbes(probes) {
+  const container = $("#my-probes-list");
+  container.replaceChildren();
+  if (!probes.length) {
+    const empty = document.createElement("p");
+    empty.className = "empty";
+    empty.textContent = "No probes were returned for this key.";
+    container.append(empty);
+    return;
+  }
+  for (const probe of probes) {
+    const row = document.createElement("div");
+    row.className = "measurement-row";
+    const main = document.createElement("div");
+    main.className = "measurement-main";
+    const title = document.createElement("strong");
+    const dot = document.createElement("i");
+    const status = probe?.status?.name ?? probe?.status_name ?? "Unknown";
+    dot.className = `probe-status${String(status).toLowerCase() === "connected" ? " good" : ""}`;
+    title.append(dot, document.createTextNode(probe.description || `Probe #${probe.id}`));
+    const meta = document.createElement("span");
+    const asn = probe.asn_v4 || probe.asn_v6;
+    meta.textContent = `#${probe.id} · ${status} · ${probe.country_code || "??"}${asn ? ` · AS${asn}` : ""}${probe.is_anchor ? " · Anchor" : ""}`;
+    main.append(title, meta);
+    const link = document.createElement("a");
+    link.className = "panel-link";
+    link.href = `https://atlas.ripe.net/probes/${probe.id}/`;
+    link.target = "_blank";
+    link.rel = "noreferrer";
+    link.textContent = "Open ↗";
+    row.append(main, link);
+    container.append(row);
+  }
+}
+
+async function loadOwnedProbes() {
+  const button = $("#refresh-probes");
+  const container = $("#my-probes-list");
+  button.disabled = true;
+  container.textContent = "Loading probes from RIPE Atlas…";
+  try {
+    const response = await listMyProbes();
+    renderProbes(Array.isArray(response.results) ? response.results : []);
+  } catch (error) {
+    container.textContent = error instanceof AtlasApiError ? error.message : "Could not load probes.";
+  } finally { button.disabled = false; }
+}
+
+$("#refresh-probes").addEventListener("click", loadOwnedProbes);
 
 const savedProbeId = localStorage.getItem("ripe-atlas-webcockpit.probe-id");
 if (savedProbeId) {

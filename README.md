@@ -13,6 +13,8 @@ Public probe status is fetched directly by the browser. On Turris, a deliberatel
 - Probe selection by region, countries, ASN, prefix, IDs or previous measurement
 - Authenticated list of the 20 newest measurements owned by the configured key
 - Safe rerun as a new one-off measurement using the same target, address family and prior probe set
+- Direct display of the latest result per probe, capped to 50 rendered entries
+- Authenticated list of up to 100 probes owned by the configured key
 - Turris WebApps landing-page tile and existing-lighttpd integration
 - Guarded deploy/update script with dry-run and pre-update backup
 - Zero browser runtime dependencies and unit-tested data/request validation

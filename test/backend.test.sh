@@ -42,6 +42,14 @@ rerun_response="$(call_cgi '{"action":"measurement.rerun","measurementId":424200
 [[ "$rerun_response" == *'"measurements":[424242]'* ]]
 node -e 'const p=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")); if (p.definitions[0].type!=="ping" || p.definitions[0].target!=="example.net" || p.probes[0].type!=="msm" || p.probes[0].value!==424200 || p.probes[0].requested!==50) process.exit(1)' "$FAKE_CURL_PAYLOAD"
 
+results_response="$(call_cgi '{"action":"measurement.results","measurementId":424200}')"
+[[ "$results_response" == *'"avg":12.5'* ]]
+[[ "$results_response" == *'"prb_id":123'* ]]
+
+probes_response="$(call_cgi '{"action":"probes.list"}')"
+[[ "$probes_response" == *'"description":"My probe"'* ]]
+[[ "$probes_response" == *'"name":"Connected"'* ]]
+
 cross_site="$(printf '%s' '{"action":"status"}' | env REQUEST_METHOD=POST CONTENT_TYPE=application/json CONTENT_LENGTH=19 HTTP_X_REQUESTED_WITH=ripe-atlas-webcockpit HTTP_SEC_FETCH_SITE=cross-site sh "$repo_dir/openwrt/atlas-cgi.sh")"
 [[ "$cross_site" == *'403 Forbidden'* ]]
 ! grep -Eq '"/cgi-bin/ripe-atlas-webcockpit"[[:space:]]*=>' "$repo_dir/openwrt/90-ripe-atlas-webcockpit.conf"

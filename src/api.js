@@ -100,6 +100,15 @@ export function rerunMeasurement(measurementId, options = {}) {
   return controlRequest("measurement.rerun", { measurementId: normalized }, options);
 }
 
+export function fetchMeasurementResults(measurementId, options = {}) {
+  const normalized = parseProbeId(measurementId);
+  return controlRequest("measurement.results", { measurementId: normalized }, options);
+}
+
+export function listMyProbes(options = {}) {
+  return controlRequest("probes.list", {}, options);
+}
+
 export function parseProbeId(value) {
   const text = String(value ?? "").trim();
   if (!/^[1-9]\d{0,9}$/.test(text)) {

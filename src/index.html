@@ -137,6 +137,21 @@
           <p class="control-copy">Loads the 20 newest measurements visible to the configured key. Supported ping and traceroute entries can be loaded into the form or run again as a new bounded one-off measurement.</p>
           <div id="measurements-list" class="measurements-list" aria-live="polite"><p class="empty">Save a key, then load your measurements.</p></div>
         </article>
+        <article id="results-card" class="panel existing-card" hidden>
+          <div class="existing-head">
+            <div><p class="kicker">LATEST RESULTS</p><h3 id="results-title">Measurement results</h3></div>
+            <a id="results-atlas-link" class="panel-link" href="https://atlas.ripe.net/measurements/" target="_blank" rel="noreferrer">Full results ↗</a>
+          </div>
+          <p class="control-copy">Latest result per probe. RIPE Atlas may cache this endpoint for several minutes.</p>
+          <div id="measurement-results" class="result-list" aria-live="polite"></div>
+        </article>
+        <article class="panel existing-card">
+          <div class="existing-head">
+            <div><p class="kicker">MY PROBES</p><h3>Probes owned by this key</h3></div>
+            <button id="refresh-probes" class="secondary" type="button">Load probes</button>
+          </div>
+          <div id="my-probes-list" class="measurements-list" aria-live="polite"><p class="empty">Save a key, then load your probes.</p></div>
+        </article>
       </section>
     </main>
 

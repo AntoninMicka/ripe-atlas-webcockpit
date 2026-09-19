@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { AtlasApiError, createMeasurement, listMeasurements, normalizeMeasurement, rerunMeasurement, saveAccessToken } from "../src/api.js";
+import { AtlasApiError, createMeasurement, fetchMeasurementResults, listMeasurements, listMyProbes, normalizeMeasurement, rerunMeasurement, saveAccessToken } from "../src/api.js";
 
 const valid = {
   type: "ping", target: "example.net", description: "Router test", af: "4",
@@ -61,4 +61,23 @@ test("rerunMeasurement validates the ID before requesting a rerun", async () => 
   } });
   assert.deepEqual(body, { action: "measurement.rerun", measurementId: 424200 });
   assert.throws(() => rerunMeasurement("../../keys", { fetchImpl: async () => assert.fail("must not fetch") }), AtlasApiError);
+});
+
+test("fetchMeasurementResults validates the ID and requests latest results", async () => {
+  let body;
+  await fetchMeasurementResults(424200, { fetchImpl: async (_url, init) => {
+    body = JSON.parse(init.body);
+    return { ok: true, status: 200, json: async () => ({ "123": [] }) };
+  } });
+  assert.deepEqual(body, { action: "measurement.results", measurementId: 424200 });
+  assert.throws(() => fetchMeasurementResults("all"), AtlasApiError);
+});
+
+test("listMyProbes uses the allowlisted router action", async () => {
+  let body;
+  await listMyProbes({ fetchImpl: async (_url, init) => {
+    body = JSON.parse(init.body);
+    return { ok: true, status: 200, json: async () => ({ results: [] }) };
+  } });
+  assert.deepEqual(body, { action: "probes.list" });
 });
