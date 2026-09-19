@@ -2,27 +2,27 @@
 
 ## Trust boundary
 
-The cockpit is intended for an authenticated router administration surface on a trusted LAN. It must not be exposed directly to the public Internet.
+The cockpit is intended for a trusted LAN or administrative VPN. It must not be exposed directly to the public Internet. The Turris WebApps landing page does not itself provide an authentication guarantee.
 
-## Milestone 0 controls
+## Controls
 
-- Read-only RIPE Atlas API calls only.
-- No RIPE Atlas API key is accepted, stored or sent.
-- Probe IDs are parsed as positive decimal integers before use in a URL.
-- Network requests use HTTPS and a finite timeout.
-- Remote values are rendered with DOM text nodes, not `innerHTML`.
-- Only the selected public probe ID is kept in browser local storage.
-- No analytics, tracking pixels, remote fonts or third-party scripts.
+- Public probe IDs are parsed as positive decimal integers before use in a URL.
+- The API key is accepted only by the same-origin router endpoint, stored outside the web root with mode `0600` under the lighttpd service identity, never logged and never returned.
+- The browser does not put the key in local or session storage.
+- Measurement requests are reconstructed from an allowlist: one-off ping/traceroute, IPv4/IPv6, supported selectors and at most 50 probes.
+- JSON content type, a custom request marker, same-origin fetch metadata and matching `Origin`/`Host` reduce CSRF and DNS-rebinding risk.
+- curl receives the secret through a mode-private config file rather than a process argument. Temporary request files are removed after each request.
+- A restrictive CSP permits only same-origin assets and RIPE Atlas API connections.
+- Remote values are rendered with DOM text nodes; there are no third-party scripts, fonts, analytics or tracking pixels.
 
-## Before router deployment
+## Operational requirements
 
-- Package the exact reviewed assets; record their checksums.
-- Serve under the existing router web stack and authentication boundary.
-- Add a restrictive Content Security Policy. It needs `connect-src https://atlas.ripe.net` while the browser calls the API directly.
-- Confirm that the page is reachable from intended LAN interfaces only.
-- Verify install, upgrade and removal on a Turris Omnia snapshot that can be rolled back.
-- Confirm behavior when DNS, IPv4, IPv6 or RIPE Atlas is unavailable.
+- Create a dedicated RIPE Atlas key with only measurement-creation permission.
+- Keep router administration reachable only from intended LAN/VPN interfaces.
+- Review the deploy dry-run and the owned-path list before applying.
+- Verify install, update and recovery on a Schnapps-capable snapshot.
+- Rotate the key if the router or a backup containing `/etc/ripe-atlas-webcockpit` is exposed.
 
-## Future authenticated API work
+## Residual risk and future work
 
-Do not put a RIPE Atlas API key in JavaScript or browser local storage. If private data or write operations are added, use a router-local backend with a least-privilege key, protected storage, CSRF defenses, an allowlisted operation schema and an audit trail.
+A LAN user with direct endpoint access can currently create a bounded measurement. Stable Turris-session authentication and an audit journal should precede recurring measurements, stop controls, higher probe limits or additional Atlas operations.

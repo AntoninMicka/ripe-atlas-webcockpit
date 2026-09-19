@@ -1,13 +1,13 @@
 {
   "name": "ripe-atlas-webcockpit",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "A lightweight RIPE Atlas status cockpit for Turris Omnia.",
   "scripts": {
     "dev": "python3 -m http.server 8080 -d src",
     "test": "node --test",
-    "check": "node --check src/app.js && node --check src/api.js && node --check src/model.js && node --test"
+    "check": "node --check src/app.js && node --check src/api.js && node --check src/model.js && sh -n openwrt/atlas-cgi.sh && sh -n openwrt/install.sh && bash -n scripts/deploy-update.sh && bash test/backend.test.sh && node --test"
   },
   "engines": {
     "node": ">=20"

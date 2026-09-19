@@ -1,20 +1,22 @@
 # RIPE Atlas Webcockpit
 
-A small, read-only RIPE Atlas dashboard designed for a Turris Omnia router.
+A small RIPE Atlas status and measurement dashboard designed for a Turris Omnia router.
 
-The first milestone is deliberately narrow: enter a public RIPE Atlas probe ID and inspect its connection state, network identity, address families, uptime and tags. The browser talks directly to the public RIPE Atlas API, so the cockpit does not collect credentials or proxy traffic through a third party.
+Public probe status is fetched directly by the browser. On Turris, a deliberately narrow router-local CGI stores a RIPE Atlas API key and creates bounded one-off measurements without exposing the key to JavaScript storage.
 
 ## Current status
 
 - English, responsive web interface
 - Public probe lookup through RIPE Atlas API v2
-- Explicit loading, unavailable and stale-data states
-- No API keys, router credentials or write operations
-- Zero runtime dependencies
-- Unit tests for API-data normalization
-- Turris packaging and real-device validation are still pending
+- Router-local API-key storage with mode `0600`; the key is never returned
+- One-off ping and traceroute creation from at most 50 probes
+- Probe selection by region, countries, ASN, prefix, IDs or previous measurement
+- Turris WebApps landing-page tile and existing-lighttpd integration
+- Guarded deploy/update script with dry-run and pre-update backup
+- Zero browser runtime dependencies and unit-tested data/request validation
+- Real-device validation is still pending
 
-This repository does **not** install or manage the RIPE Atlas software probe. RIPE NCC documents Turris as a vendor-supported software-probe platform; installation and registration remain separate administrative actions.
+This repository does **not** install or manage the RIPE Atlas software probe. Installation and registration remain separate administrative actions.
 
 ## Run locally
 
@@ -24,7 +26,7 @@ Requirements: Python 3 for the local static server and Node.js 20 or newer for t
 npm run dev
 ```
 
-Open <http://localhost:8080>, enter a public probe ID and select **Load probe**.
+Open <http://localhost:8080>. Public probe lookup works locally; the control panel reports unavailable until deployed with its router backend.
 
 ## Verify
 
@@ -33,16 +35,26 @@ npm test
 npm run check
 ```
 
-## Target deployment
+## Deploy or update on Turris
 
-The intended production path is a Turris/OpenWrt package that installs immutable static assets under a router-local URL and adds a LuCI entry. No WAN listener is required. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [openwrt/README.md](openwrt/README.md).
+Preview the exact scope without connecting:
 
-Do not treat a local browser test as proof of compatibility with a Turris Omnia. Package installation, LuCI integration, Content Security Policy, API reachability and rollback must be verified on a supported Turris OS release.
+```sh
+scripts/deploy-update.sh --target root@192.168.1.1 --dry-run
+```
+
+After reviewing the plan, apply it explicitly:
+
+```sh
+scripts/deploy-update.sh --target root@192.168.1.1 --yes
+```
+
+The script installs immutable release assets, a WebApps tile, one lighttpd include and a CGI endpoint. It opens no new port and preserves `/etc/ripe-atlas-webcockpit/access-token` across updates. Each run creates a timestamped backup below `/root/ripe-atlas-webcockpit-backups/`.
+
+Do not treat static checks as proof of compatibility with a Turris Omnia. The tile, HTTPS route, CGI, restart, repeated update, real low-cost measurement and recovery must be verified on the target Turris OS release.
 
 ## Data and security
 
-The cockpit stores only the last entered probe ID in browser local storage. Public probe metadata is fetched from `https://atlas.ripe.net/api/v2/`. API keys are intentionally out of scope for this milestone. See [docs/SECURITY.md](docs/SECURITY.md).
+The browser stores only the last entered probe ID. The API key is stored outside the web root in a mode-`0600` file owned by the lighttpd service account and is passed to RIPE Atlas through a temporary mode-private request directory. Use a dedicated RIPE Atlas key with only measurement-creation permission. See [docs/SECURITY.md](docs/SECURITY.md).
 
-## Project name
-
-The product name is **RIPE Atlas Webcockpit**. “RIPE Atlas” is a RIPE NCC service name; this project is independent and is not presented as an official RIPE NCC or CZ.NIC product.
+The product name is **RIPE Atlas Webcockpit**. “RIPE Atlas” is a RIPE NCC service name; this independent project is not presented as an official RIPE NCC or CZ.NIC product.

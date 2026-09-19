@@ -1,4 +1,4 @@
-import { AtlasApiError, fetchProbe } from "./api.js";
+import { AtlasApiError, clearAccessToken, createMeasurement, fetchControlStatus, fetchProbe, saveAccessToken } from "./api.js";
 import { normalizeProbe } from "./model.js";
 
 const $ = (selector) => document.querySelector(selector);
@@ -7,6 +7,8 @@ const input = $("#probe-id");
 const welcome = $("#welcome");
 const message = $("#message");
 const dashboard = $("#dashboard");
+const tokenForm = $("#token-form");
+const measurementForm = $("#measurement-form");
 
 function setText(selector, value) {
   $(selector).textContent = value;
@@ -96,8 +98,94 @@ form.addEventListener("submit", (event) => {
   loadProbe(input.value);
 });
 
+function setControlStatus(configured, detail) {
+  const badge = $("#control-badge");
+  badge.lastChild.textContent = configured ? " Control ready" : " Public mode";
+  $("#token-status").textContent = detail;
+  measurementForm.querySelector("button[type=submit]").disabled = !configured;
+}
+
+async function refreshControlStatus() {
+  try {
+    const status = await fetchControlStatus();
+    setControlStatus(status.tokenConfigured, status.tokenConfigured
+      ? "A measurement key is configured. Its value cannot be read back."
+      : "No measurement key is configured yet.");
+  } catch {
+    setControlStatus(false, "Router control is unavailable in this deployment. Public probe lookup still works.");
+    tokenForm.querySelector("button[type=submit]").disabled = true;
+    $("#clear-token").disabled = true;
+  }
+}
+
+tokenForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const button = tokenForm.querySelector("button[type=submit]");
+  button.disabled = true;
+  try {
+    await saveAccessToken($("#access-token").value);
+    tokenForm.reset();
+    setControlStatus(true, "Measurement key saved securely on this router.");
+  } catch (error) {
+    $("#token-status").textContent = error instanceof AtlasApiError ? error.message : "Could not save the key.";
+  } finally { button.disabled = false; }
+});
+
+$("#clear-token").addEventListener("click", async () => {
+  if (!window.confirm("Remove the stored RIPE Atlas API key from this router?")) return;
+  const button = $("#clear-token");
+  button.disabled = true;
+  try {
+    await clearAccessToken();
+    setControlStatus(false, "Measurement key removed from this router.");
+  } catch (error) {
+    $("#token-status").textContent = error instanceof AtlasApiError ? error.message : "Could not remove the key.";
+  } finally { button.disabled = false; }
+});
+
+const selectionHelp = {
+  region: "Examples: europe, western_europe, eu27.",
+  countries: "Comma-separated ISO codes, for example CZ,DE,AT.",
+  asn: "A positive AS number without the AS prefix, for example 3333.",
+  prefix: "An IPv4 or IPv6 prefix, for example 192.0.2.0/24.",
+  probes: "Comma-separated probe IDs, for example 1,2,3.",
+  msm: "A previous measurement ID whose probes should be reused."
+};
+measurementForm.elements.selectionType.addEventListener("change", (event) => {
+  $("#selection-help").textContent = selectionHelp[event.target.value];
+});
+
+measurementForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const button = measurementForm.querySelector("button[type=submit]");
+  const result = $("#measurement-result");
+  button.disabled = true;
+  result.hidden = false;
+  result.className = "control-result";
+  result.textContent = "Submitting the bounded one-off test…";
+  try {
+    const values = Object.fromEntries(new FormData(measurementForm));
+    const response = await createMeasurement(values);
+    const measurementIds = Array.isArray(response.measurements) ? response.measurements : [];
+    const ids = measurementIds.length ? measurementIds.join(", ") : "created";
+    result.textContent = `Measurement ${ids} created. `;
+    if (measurementIds.length) {
+      const link = document.createElement("a");
+      link.href = `https://atlas.ripe.net/measurements/${measurementIds[0]}/`;
+      link.target = "_blank";
+      link.rel = "noreferrer";
+      link.textContent = "Open in RIPE Atlas ↗";
+      result.append(link);
+    }
+  } catch (error) {
+    result.className = "control-result error";
+    result.textContent = error instanceof AtlasApiError ? error.message : "Could not create the measurement.";
+  } finally { button.disabled = false; }
+});
+
 const savedProbeId = localStorage.getItem("ripe-atlas-webcockpit.probe-id");
 if (savedProbeId) {
   input.value = savedProbeId;
   loadProbe(savedProbeId);
 }
+refreshControlStatus();

@@ -3,36 +3,35 @@
 ## M0 — Public probe status (implemented locally)
 
 - responsive English cockpit
-- public probe lookup
-- connection, network and uptime summary
+- public probe lookup and network/uptime summary
 - resilient empty/loading/error states
 - model unit tests
 
-Acceptance still requires browser testing against the live API.
+## M1 — Turris integration (implemented, device acceptance open)
 
-## M1 — Turris package
-
-- select the supported Turris OS baseline
-- build an OpenWrt package with deterministic assets
-- add an authenticated LuCI navigation entry
-- install without opening a new listening port
-- document backup, upgrade, removal and Schnapps rollback
+- install versioned assets without opening a new port
+- add a Turris WebApps landing-page tile
+- preserve a private token across guarded deploy/update runs
+- validate lighttpd and restore owned files on installation failure
+- package as a signed native Turris/OpenWrt package
+- integrate a stable router authentication boundary
 - validate on a real Turris Omnia
 
 ## M2 — Local probe health
 
-- read-only local adapter for installed package and service state
+- read-only adapter for installed probe package and service state
 - compare local service state with RIPE Atlas public state
 - display observation timestamps and distinguish unknown from offline
 - never expose the probe private key
 
-## M3 — Measurement views
+## M3 — Bounded measurements (implemented, live acceptance open)
 
-- recent measurement participation
-- latency and reachability trends
-- bounded result queries and client-side summaries
-- explicit freshness and partial-data indicators
+- one-off ping and traceroute
+- selection by region, countries, ASN, prefix, probe IDs or previous measurement
+- at most 50 probes per request
+- least-privilege router-local API key
+- verify one real low-cost measurement and result link on a test account
 
 ## Deferred control-plane work
 
-Creating or stopping measurements requires a separate threat model, least-privilege API keys, CSRF protection and an auditable router-local backend. It is not implied by the read-only cockpit.
+Recurring tests, stop operations and additional measurement types require an audit journal, explicit credit estimates and stronger router authentication.

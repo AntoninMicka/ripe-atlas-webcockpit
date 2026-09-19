@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="RIPE Atlas Webcockpit">
+  <rect width="128" height="128" rx="24" fill="#10221e"/>
+  <circle cx="64" cy="64" r="42" fill="none" stroke="#b8f23d" stroke-width="4" opacity=".7"/>
+  <circle cx="64" cy="64" r="24" fill="none" stroke="#55e5b3" stroke-width="3" opacity=".65"/>
+  <path d="M64 64 96 36A43 43 0 0 1 106 68Z" fill="#b8f23d" opacity=".28"/>
+  <circle cx="64" cy="64" r="6" fill="#b8f23d"/>
+  <circle cx="92" cy="48" r="5" fill="#55e5b3"/>
+</svg>

@@ -1,38 +1,40 @@
 # Architecture
 
-## Scope
+## Data paths
 
-Milestone 0 is a static, read-only single-page application. It answers one operational question: “Is this public RIPE Atlas probe online, and what network identity is RIPE Atlas currently reporting for it?”
+Public status remains a static browser client. Secret-bearing requests use a narrow same-origin router endpoint.
 
 ```text
 Browser on trusted LAN
+        |-- HTTPS GET (public metadata) ----------> RIPE Atlas API v2
         |
-        | HTTPS GET (public metadata only)
-        v
-RIPE Atlas REST API v2
+        `-- same-origin JSON POST --> Turris lighttpd --> allowlisted CGI
+                                                       |-- service-owned mode-0600 API key
+                                                       `--> RIPE Atlas API v2
 ```
 
-No backend, database, analytics or secret store is required. This keeps the router footprint small and prevents the first version from becoming a credential-bearing control plane.
+There is no database, analytics service or additional listener. The CGI accepts only token status/save/removal and bounded one-off ping/traceroute creation. It constructs the upstream request itself instead of forwarding arbitrary JSON.
 
 ## Modules
 
-- `src/api.js` validates the probe ID, applies a timeout and fetches the public probe resource.
-- `src/model.js` maps the external API shape to a small display model and computes freshness labels.
+- `src/api.js` validates probe IDs and measurement requests and owns HTTP error handling.
+- `src/model.js` maps external public-probe data to a small display model.
 - `src/app.js` owns browser state and rendering.
-- `src/styles.css` provides a responsive UI without third-party assets.
+- `openwrt/atlas-cgi.sh` owns token storage, server-side validation and authenticated Atlas requests.
+- `openwrt/install.sh` installs a versioned release and restores owned files if lighttpd validation or restart fails.
+- `scripts/deploy-update.sh` provides explicit dry-run and apply paths over SSH.
 
-External API objects are normalized before rendering. Unknown or missing fields display as `Not reported`; raw API values are never inserted as HTML.
+External data is rendered as text, never inserted as HTML. Browser validation is convenience only; the CGI independently validates every field.
 
 ## Turris boundary
 
-Turris OS is based on OpenWrt and provides LuCI. The planned package will contain static assets and a LuCI menu entry. It should be LAN-only, inherit router authentication where integration permits it, and avoid opening a new network port.
+The integration uses the established Turris WebApps landing-page definition and existing lighttpd instance. It does not open a new port. The current implementation relies on a trusted-LAN boundary plus same-origin/CSRF checks. A WebApps tile is navigation, not authentication; stable reForis authentication integration remains future hardening.
 
-The initial web application does not call local router commands. A later local-status adapter may expose a strict read-only schema for service state and installed package version. It must not return probe private keys, configuration secrets, logs with credentials, or arbitrary command output.
+## Control-plane limits
 
-## Explicit non-goals for Milestone 0
-
-- installing, registering, starting or stopping the RIPE Atlas probe
-- storing a RIPE Atlas API key
-- creating or stopping measurements
-- changing firewall, DNS, routing or Turris configuration
-- claiming real-device compatibility before router testing
+- one-off `ping` and `traceroute` only
+- IPv4 or IPv6
+- at most 50 requested probes
+- region, country, ASN, prefix, explicit-probe or previous-measurement selection
+- no arbitrary API proxy, recurring measurements or stop operation
+- no installation or management of the RIPE Atlas software probe

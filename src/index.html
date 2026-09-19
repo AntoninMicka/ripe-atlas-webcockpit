@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="dark">
-    <meta name="description" content="A read-only RIPE Atlas status cockpit for Turris Omnia.">
+    <meta name="description" content="A RIPE Atlas status and measurement cockpit for Turris Omnia.">
     <title>RIPE Atlas Webcockpit</title>
     <link rel="stylesheet" href="./styles.css">
     <script type="module" src="./app.js"></script>
@@ -17,7 +17,7 @@
         <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
         <span><strong>RIPE Atlas</strong><small>Webcockpit · Turris Omnia</small></span>
       </a>
-      <div class="read-only"><span></span> Read-only mode</div>
+      <div id="control-badge" class="read-only"><span></span> Public mode</div>
     </header>
 
     <main>
@@ -88,8 +88,50 @@
           <a id="atlas-link" href="https://atlas.ripe.net/probes/" target="_blank" rel="noreferrer">Open in RIPE Atlas <span>↗</span></a>
         </article>
       </section>
+
+      <section class="control-section" aria-labelledby="control-title">
+        <div class="section-heading">
+          <div><p class="eyebrow">ROUTER CONTROL</p><h2 id="control-title">Run an Atlas test.</h2></div>
+          <p>The access key stays on the router. Measurements are one-off and deliberately bounded.</p>
+        </div>
+        <div class="control-grid">
+          <article class="panel token-card">
+            <p class="kicker">ACCESS KEY</p>
+            <h3>Router-local credential</h3>
+            <p id="token-status" class="control-copy" aria-live="polite">Checking the router backend…</p>
+            <form id="token-form">
+              <label for="access-token">RIPE Atlas API key</label>
+              <input id="access-token" type="password" autocomplete="new-password" spellcheck="false" placeholder="Paste a measurement key" required>
+              <div class="button-row"><button type="submit">Save key</button><button id="clear-token" class="secondary" type="button">Remove key</button></div>
+            </form>
+            <p class="fine-print">The key is sent only to this router and stored mode 0600. It is never returned to the browser.</p>
+          </article>
+
+          <article class="panel measurement-card">
+            <p class="kicker">ONE-OFF MEASUREMENT</p>
+            <h3>Ping or traceroute</h3>
+            <form id="measurement-form">
+              <div class="form-grid">
+                <label>Test type<select name="type"><option value="ping">Ping</option><option value="traceroute">Traceroute</option></select></label>
+                <label>Address family<select name="af"><option value="4">IPv4</option><option value="6">IPv6</option></select></label>
+                <label class="wide">Target<input name="target" placeholder="example.net or 192.0.2.1" required maxlength="255"></label>
+                <label class="wide">Description<input name="description" value="Turris Webcockpit one-off test" required maxlength="128"></label>
+                <label>Probe rule<select name="selectionType">
+                  <option value="region">Region</option><option value="countries">Countries</option><option value="asn">ASN</option>
+                  <option value="prefix">IP prefix</option><option value="probes">Probe IDs</option><option value="msm">Previous measurement</option>
+                </select></label>
+                <label>Rule value<input name="selectionValue" placeholder="europe" required maxlength="255"></label>
+                <label>Probe count<input name="requested" type="number" min="1" max="50" value="5" required></label>
+              </div>
+              <p id="selection-help" class="fine-print">Examples: europe, western_europe, eu27.</p>
+              <button type="submit">Create one-off test <span aria-hidden="true">→</span></button>
+            </form>
+            <div id="measurement-result" class="control-result" hidden aria-live="polite"></div>
+          </article>
+        </div>
+      </section>
     </main>
 
-    <footer><span>Independent project · No secrets stored</span><span>Public API data may be delayed</span></footer>
+    <footer><span>Independent project · Key stored only on router</span><span>RIPE Atlas credits may apply</span></footer>
   </body>
 </html>
