@@ -1,4 +1,4 @@
-import { AtlasApiError, clearAccessToken, createMeasurement, fetchControlStatus, fetchMeasurementResults, fetchProbe, listMeasurements, listMyProbes, rerunMeasurement, saveAccessToken } from "./api.js";
+import { AtlasApiError, clearAccessToken, createMeasurement, fetchControlStatus, fetchMeasurementResults, fetchProbe, listMeasurements, listMyProbes, listTargets, removeTarget, rerunMeasurement, runTarget, saveAccessToken, saveTarget } from "./api.js";
 import { normalizeProbe } from "./model.js";
 
 const $ = (selector) => document.querySelector(selector);
@@ -399,9 +399,139 @@ async function loadOwnedProbes() {
 
 $("#refresh-probes").addEventListener("click", loadOwnedProbes);
 
+function showTargetMessage(text, error = false) {
+  const message = $("#targets-message");
+  message.hidden = false;
+  message.className = `control-result${error ? " error" : ""}`;
+  message.textContent = text;
+  return message;
+}
+
+function renderTargets(targets) {
+  const container = $("#targets-list");
+  container.replaceChildren();
+  if (!targets.length) {
+    const empty = document.createElement("p");
+    empty.className = "empty";
+    empty.textContent = "No monitored targets saved on this router.";
+    container.append(empty);
+    return;
+  }
+  for (const target of targets) {
+    const row = document.createElement("div");
+    row.className = "measurement-row";
+    const main = document.createElement("div");
+    main.className = "measurement-main";
+    const title = document.createElement("strong");
+    title.textContent = target.label;
+    const meta = document.createElement("span");
+    meta.textContent = `${target.target} · IPv${target.af} · ${target.requested} probes by ${target.selectionType}: ${target.selectionValue}`;
+    main.append(title, meta);
+    const actions = document.createElement("div");
+    actions.className = "measurement-actions";
+    for (const type of ["ping", "traceroute"]) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = type === "ping" ? "run-again" : "";
+      button.textContent = type === "ping" ? "Ping" : "Traceroute";
+      button.addEventListener("click", () => runSavedTarget(target, type, button));
+      actions.append(button);
+    }
+    const editButton = document.createElement("button");
+    editButton.type = "button";
+    editButton.textContent = "Use in form";
+    editButton.addEventListener("click", () => loadTargetIntoForm(target));
+    const removeButton = document.createElement("button");
+    removeButton.type = "button";
+    removeButton.className = "target-remove";
+    removeButton.textContent = "Remove";
+    removeButton.addEventListener("click", () => removeSavedTarget(target));
+    actions.append(editButton, removeButton);
+    row.append(main, actions);
+    container.append(row);
+  }
+}
+
+async function loadTargets() {
+  const button = $("#refresh-targets");
+  const container = $("#targets-list");
+  button.disabled = true;
+  container.textContent = "Loading monitored targets…";
+  try {
+    const response = await listTargets();
+    renderTargets(Array.isArray(response.targets) ? response.targets : []);
+  } catch (error) {
+    container.textContent = error instanceof AtlasApiError ? error.message : "Could not load monitored targets.";
+  } finally { button.disabled = false; }
+}
+
+function loadTargetIntoForm(target) {
+  measurementForm.elements.type.value = "ping";
+  measurementForm.elements.af.value = String(target.af);
+  measurementForm.elements.target.value = target.target;
+  measurementForm.elements.description.value = `Monitored target: ${target.label}`;
+  measurementForm.elements.selectionType.value = target.selectionType;
+  measurementForm.elements.selectionValue.value = target.selectionValue;
+  measurementForm.elements.requested.value = String(target.requested);
+  measurementForm.elements.selectionType.dispatchEvent(new Event("change"));
+  measurementForm.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+async function runSavedTarget(target, type, button) {
+  if (!window.confirm(`Run a one-off ${type} to ${target.target} using ${target.requested} probes? RIPE Atlas credits may apply.`)) return;
+  button.disabled = true;
+  const message = showTargetMessage(`Creating ${type} for ${target.label}…`);
+  try {
+    const response = await runTarget(target.id, type);
+    const measurementId = Array.isArray(response.measurements) ? response.measurements[0] : null;
+    message.textContent = measurementId ? `Measurement ${measurementId} created. ` : "Measurement created. ";
+    if (measurementId) {
+      const link = document.createElement("a");
+      link.href = `https://atlas.ripe.net/measurements/${measurementId}/`;
+      link.target = "_blank";
+      link.rel = "noreferrer";
+      link.textContent = "Open in RIPE Atlas ↗";
+      message.append(link);
+    }
+    loadOwnedMeasurements();
+  } catch (error) {
+    showTargetMessage(error instanceof AtlasApiError ? error.message : "Could not run the target test.", true);
+  } finally { button.disabled = false; }
+}
+
+async function removeSavedTarget(target) {
+  if (!window.confirm(`Remove monitored target “${target.label}”?`)) return;
+  try {
+    await removeTarget(target.id);
+    showTargetMessage(`Removed ${target.label}.`);
+    loadTargets();
+  } catch (error) {
+    showTargetMessage(error instanceof AtlasApiError ? error.message : "Could not remove the target.", true);
+  }
+}
+
+$("#target-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const button = form.querySelector("button[type=submit]");
+  button.disabled = true;
+  try {
+    await saveTarget(Object.fromEntries(new FormData(form)));
+    const label = form.elements.label.value;
+    form.reset();
+    showTargetMessage(`Saved ${label}.`);
+    loadTargets();
+  } catch (error) {
+    showTargetMessage(error instanceof AtlasApiError ? error.message : "Could not save the target.", true);
+  } finally { button.disabled = false; }
+});
+
+$("#refresh-targets").addEventListener("click", loadTargets);
+
 const savedProbeId = localStorage.getItem("ripe-atlas-webcockpit.probe-id");
 if (savedProbeId) {
   input.value = savedProbeId;
   loadProbe(savedProbeId);
 }
 refreshControlStatus();
+loadTargets();

@@ -5,6 +5,7 @@
 
 CONFIG_DIR="${RIPE_ATLAS_CONFIG_DIR:-/etc/ripe-atlas-webcockpit}"
 TOKEN_FILE="${RIPE_ATLAS_TOKEN_FILE:-$CONFIG_DIR/access-token}"
+TARGETS_FILE="${RIPE_ATLAS_TARGETS_FILE:-$CONFIG_DIR/targets.db}"
 ATLAS_API_BASE="${RIPE_ATLAS_API_BASE:-https://atlas.ripe.net/api/v2}"
 JSHN_LIB="${RIPE_ATLAS_JSHN_LIB:-/usr/share/libubox/jshn.sh}"
 CURL_BIN="${RIPE_ATLAS_CURL_BIN:-curl}"
@@ -59,9 +60,86 @@ case "$action" in
     [ ! -e "$TOKEN_FILE" ] || rm -f "$TOKEN_FILE" || respond "500 Internal Server Error" '{"error":"Could not remove the API key.","code":"token_storage"}'
     respond "200 OK" '{"tokenConfigured":false}'
     ;;
-  measurement.create|measurements.list|measurement.results|measurement.rerun|probes.list) ;;
+  measurement.create|measurements.list|measurement.results|measurement.rerun|probes.list|target.run) ;;
+  targets.list|targets.save|targets.remove) ;;
   *) bad_request "Unknown action." ;;
 esac
+
+validate_saved_target() {
+  [ -n "$target" ] && [ "${#target}" -le 255 ] || bad_request "Invalid target."
+  case "$target" in *[!A-Za-z0-9._:-]*) bad_request "Target contains unsupported characters." ;; esac
+  case "$af" in 4|6) ;; *) bad_request "Address family must be 4 or 6." ;; esac
+  case "$requested" in ''|*[!0-9]*) bad_request "Invalid probe count." ;; esac
+  [ "$requested" -ge 1 ] && [ "$requested" -le 50 ] || bad_request "Probe count must be between 1 and 50."
+  case "$selection_type" in
+    region) case "$selection_value" in ''|*[!a-z0-9_]*) bad_request "Invalid region." ;; esac ;;
+    countries) case "$selection_value" in ''|*[!A-Z,]*) bad_request "Use uppercase ISO country codes." ;; esac ;;
+    asn|msm) case "$selection_value" in ''|0|*[!0-9]*) bad_request "Use a positive numeric value." ;; esac ;;
+    prefix) case "$selection_value" in ''|*[!A-Fa-f0-9.:/]*) bad_request "Invalid network prefix." ;; esac ;;
+    probes) case "$selection_value" in ''|*[!0-9,]*) bad_request "Use comma-separated probe IDs." ;; esac ;;
+    *) bad_request "Unsupported probe selection rule." ;;
+  esac
+}
+
+if [ "$action" = "targets.list" ]; then
+  json_init
+  json_add_array targets
+  if [ -r "$TARGETS_FILE" ]; then
+    while IFS='|' read -r saved_id saved_label saved_target saved_af saved_selection_type saved_selection_value saved_requested; do
+      [ -n "$saved_id" ] || continue
+      json_add_object
+      json_add_string id "$saved_id"
+      json_add_string label "$saved_label"
+      json_add_string target "$saved_target"
+      json_add_int af "$saved_af"
+      json_add_string selectionType "$saved_selection_type"
+      json_add_string selectionValue "$saved_selection_value"
+      json_add_int requested "$saved_requested"
+      json_close_object
+    done < "$TARGETS_FILE"
+  fi
+  json_close_array
+  printf 'Status: 200 OK\r\nContent-Type: application/json\r\nCache-Control: no-store\r\nX-Content-Type-Options: nosniff\r\n\r\n'
+  json_dump
+  exit 0
+fi
+
+if [ "$action" = "targets.save" ]; then
+  json_get_var label label
+  json_get_var target target
+  json_get_var af af
+  json_get_var requested requested
+  json_get_var selection_type selectionType
+  json_get_var selection_value selectionValue
+  [ -n "$label" ] && [ "${#label}" -le 64 ] || bad_request "Label must contain 1 to 64 characters."
+  case "$label" in *'|'*|*[![:print:]]*) bad_request "Label contains unsupported characters." ;; esac
+  validate_saved_target
+  saved_count=0
+  [ ! -r "$TARGETS_FILE" ] || saved_count="$(wc -l < "$TARGETS_FILE")"
+  [ "$saved_count" -lt 100 ] || respond "409 Conflict" '{"error":"At most 100 monitored targets can be stored.","code":"target_limit"}'
+  mkdir -p "$CONFIG_DIR" || respond "500 Internal Server Error" '{"error":"Could not create private target storage.","code":"target_storage"}'
+  umask 077
+  targets_tmp="$CONFIG_DIR/.targets.$$"
+  [ ! -r "$TARGETS_FILE" ] || cp "$TARGETS_FILE" "$targets_tmp"
+  : > "${targets_tmp}.new"
+  if [ -r "$targets_tmp" ]; then cat "$targets_tmp" > "${targets_tmp}.new"; fi
+  saved_id="$(date +%s)$$"
+  printf '%s|%s|%s|%s|%s|%s|%s\n' "$saved_id" "$label" "$target" "$af" "$selection_type" "$selection_value" "$requested" >> "${targets_tmp}.new"
+  chmod 600 "${targets_tmp}.new" && mv -f "${targets_tmp}.new" "$TARGETS_FILE" || respond "500 Internal Server Error" '{"error":"Could not store the monitored target.","code":"target_storage"}'
+  rm -f "$targets_tmp"
+  respond "201 Created" "{\"id\":\"$saved_id\"}"
+fi
+
+if [ "$action" = "targets.remove" ]; then
+  json_get_var target_id targetId
+  case "$target_id" in ''|*[!0-9]*) bad_request "Invalid monitored target ID." ;; esac
+  [ -r "$TARGETS_FILE" ] && grep -q "^$target_id|" "$TARGETS_FILE" || respond "404 Not Found" '{"error":"Monitored target not found.","code":"target_not_found"}'
+  umask 077
+  targets_tmp="$CONFIG_DIR/.targets.$$"
+  awk -F '|' -v target_id="$target_id" '$1 != target_id { print }' "$TARGETS_FILE" > "$targets_tmp" || respond "500 Internal Server Error" '{"error":"Could not update monitored targets.","code":"target_storage"}'
+  chmod 600 "$targets_tmp" && mv -f "$targets_tmp" "$TARGETS_FILE" || respond "500 Internal Server Error" '{"error":"Could not update monitored targets.","code":"target_storage"}'
+  respond "200 OK" '{"removed":true}'
+fi
 
 [ -s "$TOKEN_FILE" ] || respond "409 Conflict" '{"error":"Configure a RIPE Atlas API key first.","code":"token_required"}'
 
@@ -152,6 +230,18 @@ if [ "$action" = "measurement.rerun" ]; then
   selection_value="$measurement_id"
   case "$requested" in ''|0|*[!0-9]*) requested=1 ;; esac
   [ "$requested" -le 50 ] || requested=50
+elif [ "$action" = "target.run" ]; then
+  json_get_var target_id targetId
+  json_get_var type type
+  case "$target_id" in ''|*[!0-9]*) bad_request "Invalid monitored target ID." ;; esac
+  case "$type" in ping|traceroute) ;; *) bad_request "Unsupported measurement type." ;; esac
+  saved_line="$(awk -F '|' -v target_id="$target_id" '$1 == target_id { print; exit }' "$TARGETS_FILE" 2>/dev/null)"
+  [ -n "$saved_line" ] || respond "404 Not Found" '{"error":"Monitored target not found.","code":"target_not_found"}'
+  IFS='|' read -r saved_id label target af selection_type selection_value requested <<EOF
+$saved_line
+EOF
+  validate_saved_target
+  description="Monitored target: $label"
 else
   json_get_var type type
   json_get_var target target

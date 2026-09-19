@@ -109,6 +109,36 @@ export function listMyProbes(options = {}) {
   return controlRequest("probes.list", {}, options);
 }
 
+export function listTargets(options = {}) {
+  return controlRequest("targets.list", {}, options);
+}
+
+export function saveTarget(input, options = {}) {
+  const normalized = normalizeMeasurement({ ...input, type: "ping", description: "Saved target" });
+  const label = requiredText(input?.label, "Label", 64);
+  return controlRequest("targets.save", {
+    label,
+    target: normalized.target,
+    af: normalized.af,
+    requested: normalized.requested,
+    selectionType: normalized.selectionType,
+    selectionValue: normalized.selectionValue
+  }, options);
+}
+
+export function removeTarget(targetId, options = {}) {
+  const id = String(targetId ?? "").trim();
+  if (!/^\d+$/.test(id)) throw new AtlasApiError("Invalid monitored target ID.", "invalid_target_id");
+  return controlRequest("targets.remove", { targetId: id }, options);
+}
+
+export function runTarget(targetId, type, options = {}) {
+  const id = String(targetId ?? "").trim();
+  if (!/^\d+$/.test(id)) throw new AtlasApiError("Invalid monitored target ID.", "invalid_target_id");
+  if (!TEST_TYPES.has(type)) throw new AtlasApiError("Choose ping or traceroute.", "invalid_measurement");
+  return controlRequest("target.run", { targetId: id, type }, options);
+}
+
 export function parseProbeId(value) {
   const text = String(value ?? "").trim();
   if (!/^[1-9]\d{0,9}$/.test(text)) {

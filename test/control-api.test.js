@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { AtlasApiError, createMeasurement, fetchMeasurementResults, listMeasurements, listMyProbes, normalizeMeasurement, rerunMeasurement, saveAccessToken } from "../src/api.js";
+import { AtlasApiError, createMeasurement, fetchMeasurementResults, listMeasurements, listMyProbes, listTargets, normalizeMeasurement, removeTarget, rerunMeasurement, runTarget, saveAccessToken, saveTarget } from "../src/api.js";
 
 const valid = {
   type: "ping", target: "example.net", description: "Router test", af: "4",
@@ -80,4 +80,28 @@ test("listMyProbes uses the allowlisted router action", async () => {
     return { ok: true, status: 200, json: async () => ({ results: [] }) };
   } });
   assert.deepEqual(body, { action: "probes.list" });
+});
+
+test("saved target actions use normalized allowlisted fields", async () => {
+  const requests = [];
+  const options = { fetchImpl: async (_url, init) => {
+    requests.push(JSON.parse(init.body));
+    return { ok: true, status: 200, json: async () => ({ targets: [] }) };
+  } };
+  await listTargets(options);
+  await saveTarget({ label: "Primary", target: "example.net", af: 4, requested: 5, selectionType: "region", selectionValue: "europe", ignored: "nope" }, options);
+  await runTarget("123456", "ping", options);
+  await removeTarget("123456", options);
+  assert.deepEqual(requests, [
+    { action: "targets.list" },
+    { action: "targets.save", label: "Primary", target: "example.net", af: 4, requested: 5, selectionType: "region", selectionValue: "europe" },
+    { action: "target.run", targetId: "123456", type: "ping" },
+    { action: "targets.remove", targetId: "123456" }
+  ]);
+});
+
+test("saved target actions reject unsafe IDs and unsupported tests", () => {
+  assert.throws(() => runTarget("../token", "ping"), AtlasApiError);
+  assert.throws(() => runTarget("123", "http"), AtlasApiError);
+  assert.throws(() => removeTarget("all"), AtlasApiError);
 });

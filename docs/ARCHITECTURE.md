@@ -15,6 +15,8 @@ Browser on trusted LAN
 
 There is no database, analytics service or additional listener. The CGI accepts only token status/save/removal, authenticated lists of the key owner's measurements and probes, bounded latest-result reads, and bounded one-off ping/traceroute creation. It constructs upstream requests itself instead of forwarding arbitrary JSON.
 
+The only persistent application data is the secret key and an allowlisted target registry under `/etc/ripe-atlas-webcockpit/`. A saved target contains a label, domain/IP, address family, probe selector and requested count. Saving a target does not schedule traffic; every measurement still requires an explicit user action and confirmation.
+
 ## Modules
 
 - `src/api.js` validates probe IDs and measurement requests and owns HTTP error handling.
@@ -42,5 +44,6 @@ Turris already maps `/cgi-bin/` before application-specific aliases. The endpoin
 - only measurements returned by the configured key's `/measurements/my/` endpoint may be rerun
 - latest-result reads are ownership-checked, request one version per probe and enforce a 1 MiB upstream response limit
 - the browser renders at most 50 latest-result entries and links to RIPE Atlas for complete data
+- at most 100 monitored targets, each independently revalidated before a one-off run
 - no arbitrary API proxy, recurring measurements or stop operation
 - no installation or management of the RIPE Atlas software probe

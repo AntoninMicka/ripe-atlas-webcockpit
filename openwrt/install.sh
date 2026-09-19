@@ -56,6 +56,10 @@ if [ -e "$STATE/access-token" ]; then
   chown "$lighttpd_uid:$lighttpd_gid" "$STATE/access-token"
   chmod 600 "$STATE/access-token"
 fi
+if [ -e "$STATE/targets.db" ]; then
+  chown "$lighttpd_uid:$lighttpd_gid" "$STATE/targets.db"
+  chmod 600 "$STATE/targets.db"
+fi
 mkdir -p "$backup"
 for path in "$WEB_LINK" "$CURRENT_LINK" "$CGI_PATH" "$LIGHTTPD_CONF" "$TILE" "$ICON"; do
   if [ -e "$path" ] || [ -L "$path" ]; then

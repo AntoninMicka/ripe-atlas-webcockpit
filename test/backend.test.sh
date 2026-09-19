@@ -50,6 +50,24 @@ probes_response="$(call_cgi '{"action":"probes.list"}')"
 [[ "$probes_response" == *'"description":"My probe"'* ]]
 [[ "$probes_response" == *'"name":"Connected"'* ]]
 
+save_target_response="$(call_cgi '{"action":"targets.save","label":"Primary site","target":"example.net","af":4,"requested":5,"selectionType":"region","selectionValue":"europe"}')"
+[[ "$save_target_response" == *'201 Created'* ]]
+target_id="$(cut -d '|' -f 1 "$RIPE_ATLAS_CONFIG_DIR/targets.db")"
+[[ "$target_id" =~ ^[0-9]+$ ]]
+[[ "$(stat -c '%a' "$RIPE_ATLAS_CONFIG_DIR/targets.db")" == "600" ]]
+grep -Fq '|Primary site|example.net|4|region|europe|5' "$RIPE_ATLAS_CONFIG_DIR/targets.db"
+
+targets_response="$(call_cgi '{"action":"targets.list"}')"
+[[ "$targets_response" == *'"targets"'* ]]
+
+run_target_response="$(call_cgi "{\"action\":\"target.run\",\"targetId\":\"$target_id\",\"type\":\"traceroute\"}")"
+[[ "$run_target_response" == *'"measurements":[424242]'* ]]
+node -e 'const p=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")); if (p.definitions[0].type!=="traceroute" || p.definitions[0].target!=="example.net" || p.probes[0].type!=="region" || p.probes[0].value!=="europe" || p.probes[0].requested!==5) process.exit(1)' "$FAKE_CURL_PAYLOAD"
+
+remove_target_response="$(call_cgi "{\"action\":\"targets.remove\",\"targetId\":\"$target_id\"}")"
+[[ "$remove_target_response" == *'"removed":true'* ]]
+[[ ! -s "$RIPE_ATLAS_CONFIG_DIR/targets.db" ]]
+
 cross_site="$(printf '%s' '{"action":"status"}' | env REQUEST_METHOD=POST CONTENT_TYPE=application/json CONTENT_LENGTH=19 HTTP_X_REQUESTED_WITH=ripe-atlas-webcockpit HTTP_SEC_FETCH_SITE=cross-site sh "$repo_dir/openwrt/atlas-cgi.sh")"
 [[ "$cross_site" == *'403 Forbidden'* ]]
 ! grep -Eq '"/cgi-bin/ripe-atlas-webcockpit"[[:space:]]*=>' "$repo_dir/openwrt/90-ripe-atlas-webcockpit.conf"

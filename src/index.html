@@ -147,6 +147,29 @@
         </article>
         <article class="panel existing-card">
           <div class="existing-head">
+            <div><p class="kicker">MONITORED TARGETS</p><h3>Saved domains and addresses</h3></div>
+            <button id="refresh-targets" class="secondary" type="button">Refresh</button>
+          </div>
+          <p class="control-copy">Saved locally on this router. Tests run only when requested; this list does not create an automatic schedule.</p>
+          <form id="target-form" class="target-form">
+            <div class="form-grid target-form-grid">
+              <label>Label<input name="label" placeholder="Primary website" required maxlength="64"></label>
+              <label>Domain or address<input name="target" placeholder="example.net" required maxlength="255"></label>
+              <label>Address family<select name="af"><option value="4">IPv4</option><option value="6">IPv6</option></select></label>
+              <label>Probe rule<select name="selectionType">
+                <option value="region">Region</option><option value="countries">Countries</option><option value="asn">ASN</option>
+                <option value="prefix">IP prefix</option><option value="probes">Probe IDs</option><option value="msm">Previous measurement</option>
+              </select></label>
+              <label>Rule value<input name="selectionValue" value="europe" required maxlength="255"></label>
+              <label>Probe count<input name="requested" type="number" min="1" max="50" value="5" required></label>
+            </div>
+            <button type="submit">Save monitored target</button>
+          </form>
+          <div id="targets-message" class="control-result" hidden aria-live="polite"></div>
+          <div id="targets-list" class="measurements-list" aria-live="polite"><p class="empty">No monitored targets loaded.</p></div>
+        </article>
+        <article class="panel existing-card">
+          <div class="existing-head">
             <div><p class="kicker">MY PROBES</p><h3>Probes owned by this key</h3></div>
             <button id="refresh-probes" class="secondary" type="button">Load probes</button>
           </div>

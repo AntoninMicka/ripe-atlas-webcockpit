@@ -13,6 +13,8 @@ The cockpit is intended for a trusted LAN or administrative VPN. It must not be 
 - Existing-measurement reruns first resolve the ID through authenticated `/measurements/my/`; unsupported types and IDs not owned by the configured key are rejected.
 - Direct result reads use the same ownership check and fetch only `latest/?versions=1`; upstream responses are capped at 1 MiB.
 - The probe inventory uses authenticated `/probes/my/` and is never persisted by the cockpit.
+- Monitored targets are stored outside the web root in a mode-`0600` service-owned file, capped at 100 entries and revalidated before each run.
+- Saving a target never schedules a measurement; ping and traceroute still require explicit confirmation and remain capped at 50 probes.
 - JSON content type, a custom request marker, same-origin fetch metadata and matching `Origin`/`Host` reduce CSRF and DNS-rebinding risk.
 - curl receives the secret through a mode-private config file rather than a process argument. Temporary request files are removed after each request.
 - A restrictive CSP permits only same-origin assets and RIPE Atlas API connections.

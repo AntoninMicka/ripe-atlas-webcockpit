@@ -32,6 +32,8 @@
 - load a supported measurement into the editor or rerun it as a new bounded one-off
 - display the latest result per probe with bounded rendering and a full-results link
 - list probes owned by the configured key with connection and network identity
+- save up to 100 router-local monitored targets with per-target probe selection
+- explicitly launch a bounded one-off ping or traceroute from a saved target
 - at most 50 probes per request
 - least-privilege router-local API key
 - verify one real low-cost measurement and result link on a test account

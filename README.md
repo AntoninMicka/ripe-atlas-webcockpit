@@ -15,6 +15,8 @@ Public probe status is fetched directly by the browser. On Turris, a deliberatel
 - Safe rerun as a new one-off measurement using the same target, address family and prior probe set
 - Direct display of the latest result per probe, capped to 50 rendered entries
 - Authenticated list of up to 100 probes owned by the configured key
+- Router-local list of up to 100 saved domains or addresses with per-target probe rules
+- Confirmed one-click ping or traceroute from each saved target
 - Turris WebApps landing-page tile and existing-lighttpd integration
 - Guarded deploy/update script with dry-run and pre-update backup
 - Zero browser runtime dependencies and unit-tested data/request validation
@@ -53,7 +55,7 @@ After reviewing the plan, apply it explicitly:
 scripts/deploy-update.sh --target root@192.168.1.1 --yes
 ```
 
-The script installs immutable release assets, a WebApps tile, one lighttpd include and a CGI endpoint. It opens no new port and preserves `/etc/ripe-atlas-webcockpit/access-token` across updates. Each run creates a timestamped backup below `/root/ripe-atlas-webcockpit-backups/`.
+The script installs immutable release assets, a WebApps tile, one lighttpd include and a CGI endpoint. It opens no new port and preserves the API key and monitored-target database under `/etc/ripe-atlas-webcockpit/` across updates. Each run creates a timestamped backup below `/root/ripe-atlas-webcockpit-backups/`.
 
 The deploy script reuses one temporary SSH control connection, so password-based router access normally prompts only once per run.
 
